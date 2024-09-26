@@ -1,16 +1,20 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import { View, StatusBar } from 'react-native';
 import Header from './Telas/componentes/Header';
-import Perfil from './Telas/Perfil';
 import Pesquisa from './Telas/Pesquisa';
 import Feed from './Telas/Feed';
 import FormPost from './Telas/FormPost';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Conta from './Telas/Conta';
+
 
 function App() {
   const Tab = createBottomTabNavigator();
+
+
+
   return (
     <View style={{flex: 1, backgroundColor: '#FFF'}}>
       <Header />
@@ -42,8 +46,9 @@ function App() {
           <Tab.Screen name="Home" component={Feed} options={{headerShown: false}} />
           <Tab.Screen name="Search" component={Pesquisa} options={{headerShown: false}} />
           <Tab.Screen name="Post" component={FormPost} options={{headerShown: false}} /> 
-          <Tab.Screen name="Person" component={Perfil} options={{headerShown: false}} />
-          
+          <Tab.Screen name="Person" component={Conta} options={{headerShown: false}} />
+
+
         </Tab.Navigator>
       </NavigationContainer>
     </View>
