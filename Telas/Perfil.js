@@ -1,45 +1,99 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Image, ActivityIndicator, TouchableOpacity, Modal, TextInput, ScrollView } from 'react-native';
 import { firestore, storage } from '../firebase/config';
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, getDoc  } from 'firebase/firestore';
 import { auth } from '../firebase/config'; 
 import { signOut } from 'firebase/auth';
+import { Ionicons } from '@expo/vector-icons';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
+import PostItem from './PostItem';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [posts, setPosts] = useState([]); // Estado para os posts
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState(''); 
+  const [userId, setUserId] = useState(null);
   const currentUser = auth.currentUser; 
 
   useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        setUserId(user.uid); // Armazena o ID do usuário logado
+      } else {
+        setUserId(null); // Limpa o ID se o usuário não estiver logado
+      }
+    });
+    
     const fetchUserData = async () => {
       if (currentUser) {
         try {
-          const q = query(
-            collection(firestore, 'users'), 
-            where('uid', '==', currentUser.uid)
+          // Busca os dados do usuário logado
+          const userQuery = query(
+            collection(firestore, 'users'),
+            where('uid', '==', currentUser.uid) // Filtra pelo ID do usuário logado
           );
-          const querySnapshot = await getDocs(q);
-          querySnapshot.forEach((doc) => {
-            setUserData({ id: doc.id, ...doc.data() });
+          const userSnapshot = await getDocs(userQuery);
+    
+          userSnapshot.forEach((doc) => {
+            setUserData({ id: doc.id, ...doc.data() }); // Armazena os dados do usuário
           });
+    
+          // Busca os posts do usuário logado
+          const postsQuery = query(
+            collection(firestore, 'posts'),
+            where('autor', '==', currentUser.uid) // Filtra os posts pelo ID do usuário logado
+          );
+          const postSnapshot = await getDocs(postsQuery);
+    
+          // Para cada post, buscar as informações do autor (nome, perfil, etc.)
+          const userPosts = await Promise.all(
+            postSnapshot.docs.map(async (postDoc) => {
+              const postData = { id: postDoc.id, ...postDoc.data() };
+    
+              // Verifica se o post tem um autor válido
+              if (postData.autor) {
+                // Busca os dados do autor (nome, perfil, etc.) da coleção 'users'
+                const userDocRef = doc(firestore, 'users', postData.autor);
+                const userDoc = await getDoc(userDocRef);
+    
+                if (userDoc.exists()) {
+                  postData.autor = { id: userDoc.id, ...userDoc.data() }; // Armazena as informações do autor
+                } else {
+                  postData.autor = null; // Se o autor não existir
+                }
+              }
+    
+              return postData;
+            })
+          );
+    
+          setPosts(userPosts); // Armazena os posts com informações do autor
+    
         } catch (error) {
           console.error("Error fetching user data: ", error);
         } finally {
-          setLoading(false);
+          setLoading(false); // Certifica que o loading será desativado
         }
       } else {
-        setLoading(false);
+        setLoading(false); // Desativa o loading se não houver usuário logado
       }
     };
+    
 
     fetchUserData();
+    return () => unsubscribe();
   }, [currentUser]);
+
 
   const handleLogout = async () => {
     try {
+      setUserData(null)
       await signOut(auth);
     } catch (error) {
       alert('Erro', error.message);
@@ -76,7 +130,7 @@ const ProfileScreen = () => {
         ...prevData,
         perfil: downloadURL,
       }));
-
+  
       alert('Foto de perfil atualizada com sucesso!');
     } catch (error) {
       console.error('Erro ao enviar imagem:', error);
@@ -90,30 +144,58 @@ const ProfileScreen = () => {
     return <ActivityIndicator size="large" color="#0000ff" />;
   }
 
+ 
+
+
   return (
-    <View style={{ padding: 20 }}>
+    <View style={{  justifyContent:'center', alignItems:'center' }}>
       {userData ? (
         <>
+        
           <Image
             source={userData.perfil ? { uri: userData.perfil } : require('../assets/profile.jpg')}
-            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 20 }}
+            style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 10 }}
           />
-          <Text>Nome: {userData.nome}</Text>
+          <Text style={{fontSize:20, fontWeight:'bold'}}>{userData.nome}</Text>
           
           <TouchableOpacity onPress={pickImage}>
-            <Text style={{ color: 'blue', textDecorationLine: 'underline', marginTop: 10 }}>Alterar foto de perfil</Text>
+            <Text style={{ margin: 10, backgroundColor:'#DDA910', color:"#FFF", padding:5, borderRadius:15 }}>Alterar foto de perfil</Text>
           </TouchableOpacity>
 
-          {uploading ? <ActivityIndicator size="small" color="#0000ff" /> : null}
+          {uploading ? <ActivityIndicator size="large" color="#0000ff" /> : null}
 
-          <Button title="Editar Perfil" />
+          <TouchableOpacity style={{ margin: 10, backgroundColor:'#2499c7', padding:1, paddingHorizontal:10, borderRadius:15 }}>
+            <Text style={{color:'#FFF', fontSize:18}}>Editar Perfil</Text>
+          </TouchableOpacity>
+
+       
+          <View style={{ marginTop: 20, width: '100%' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign:'center' }}>Posts</Text>
+            <ScrollView style={{height:400}}>
+            <FlatList
+        data={posts}
+        renderItem={({ item }) => (
+          <PostItem
+            texto={item.texto}
+            img={item.img}
+            autor={item.autor}
+            id={item.id}
+            userId={userId}
+          />
+        )}
+        keyExtractor={(item) => item.id}
+      /> 
+             </ScrollView>
+          </View>
+ 
         </>
       ) : (
         <Text>Erro no cadastro, exclua esta conta.</Text>
       )}
-      <View style={{ margin: 20 }}>
-        <Button title="Sair" onPress={handleLogout} />
-      </View>
+      <TouchableOpacity style={{ margin: 10, backgroundColor:'#ef381e', padding:1, paddingHorizontal:10, borderRadius:15 }} onPress={handleLogout}>
+        <Text style={{color:'#FFF', fontSize:17}}>Sair</Text>
+      </TouchableOpacity>
+    
     </View>
   );
 };

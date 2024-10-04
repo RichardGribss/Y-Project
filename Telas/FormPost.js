@@ -1,81 +1,155 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { setDoc, doc } from 'firebase/firestore'; // Usar setDoc e doc para criar um ID
+import * as ImagePicker from 'expo-image-picker';
+import { firestore, auth, storage } from '../firebase/config'; // Certifique-se de importar o storage
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Importar funções do Firebase Storage
+import { v4 as uuidv4 } from 'uuid'; // Gera um ID único
 
-const FormPost = ({ userId }) => { // Supondo que userId é passado como prop
+const CreatePost = ({ navigation }) => {
   const [texto, setTexto] = useState('');
-  const [img, setImg] = useState('');
-  const [message, setMessage] = useState('');
+  const [imageUri, setImageUri] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  
 
-  const handleSubmit = async () => {
-    if (texto) {
-      try {
-        await addDoc(collection(db, 'posts'), {
-          texto: texto,
-          img: img,
-          autor: userId, // Adicionando o ID do usuário
-          data: new Date(),
-        });
-        setMessage('Post enviado com sucesso!');
-        setTexto('');
-        setImg('');
-      } catch (error) {
-        console.error('Erro ao enviar o post: ', error);
-        setMessage('Erro ao enviar o post.');
-      }
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+  
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setImageUri(result.assets[0].uri); // Acessa a URI correta da imagem selecionada
     } else {
-      setMessage('Preencha todos os campos.');
+      console.log("Imagem não selecionada ou operação cancelada.");
+    }
+  };
+
+  // Função para enviar a imagem para o Firebase Storage
+  const uploadImage = async () => {
+    if (!imageUri) return null; // Se não houver imagem, retornar nulo
+
+    const response = await fetch(imageUri); // Pegar a URI da imagem
+    const blob = await response.blob(); // Converter a imagem em blob
+
+    const storageRef = ref(storage, `images/${uuidv4()}`); // Gera um nome único para a imagem no Firebase Storage
+
+    // Enviar a imagem para o Firebase Storage
+    await uploadBytes(storageRef, blob);
+
+    // Após o upload, recuperar a URL pública da imagem
+    const downloadUrl = await getDownloadURL(storageRef);
+
+    return downloadUrl; // Retorna a URL da imagem
+  };
+
+  // Função para criar o post
+  const createPost = async () => {
+    if (texto.trim() === '') {
+      alert('Por favor, insira algum texto para o post.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Gera um ID manualmente usando uuid
+      const postId = uuidv4();
+
+      // Upload da imagem para o Firebase Storage e pegar o URL
+      const imageUrl = await uploadImage(); 
+
+      // Cria um novo post
+      const newPost = {
+        id: postId, // Adiciona o ID gerado manualmente
+        texto: texto,
+        img: imageUrl , // Salva a URL da imagem se tiver
+        autor: auth.currentUser.uid, // Captura o ID do autor autenticado
+        data: new Date(), // Data atual
+      };
+
+      // Salva o post no Firestore usando setDoc com um ID manual
+      await setDoc(doc(firestore, 'posts', postId), newPost);
+
+      alert('Post criado com sucesso!');
+      setTexto('');
+      setImageUri(null);
+
+      // Redireciona para o feed ou outra página
+      navigation.goBack();
+    } catch (error) {
+      console.error('Erro ao criar post: ', error);
+      alert('Erro ao criar post.');
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Título</Text>
+    <View style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Criar Novo Post</Text>
+
+      {/* Campo de texto para o post */}
       <TextInput
-        style={styles.input}
-        placeholder="Digite o texto"
         value={texto}
-        onChangeText={setTexto}
+        onChangeText={(text) => setTexto(text)}
+        placeholder="Escreva algo..."
+        style={{
+          height: 100,
+          borderColor: '#ccc',
+          borderWidth: 1,
+          borderRadius: 10,
+          padding: 10,
+          textAlignVertical: 'top',
+          marginBottom: 15,
+        }}
+        multiline={true}
       />
-      <Text style={styles.label}>Conteúdo</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Digite o link da imagem"
-        value={img}
-        onChangeText={setImg}
-        multiline
-      />
-      
-      <TouchableOpacity onPress={handleSubmit} style={{backgroundColor:'#0480c9', borderRadius:8}}>
-        <Text style={{textAlign:'center',color:'#FFF',padding:12}}>Enviar</Text>
+
+     
+      <TouchableOpacity onPress={pickImage} style={{ marginBottom: 15 }}>
+        <Text style={{ color: '#3b5998' }}>Escolher Imagem</Text>
       </TouchableOpacity>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+
+    
+      
+      {imageUri && (
+  <Image
+    source={{ uri: imageUri }}
+    style={{
+      width: 100, // Miniatura
+      height: 100, // Miniatura
+      borderRadius: 10,
+      marginBottom: 15,
+      alignSelf: 'center',
+    }}
+  />
+)}
+ 
+
+   
+      {uploading && <ActivityIndicator size="large" color="#3b5998" />}
+
+      {/* Botão para criar post */}
+      <TouchableOpacity
+        onPress={createPost}
+        style={{
+          backgroundColor: '#3b5998',
+          padding: 15,
+          borderRadius: 10,
+          alignItems: 'center',
+        }}
+        disabled={uploading}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+          {uploading ? 'Criando Post...' : 'Criar Post'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  input: {
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 20,
-    padding: 10,
-    borderRadius: 5,
-  },
-  message: {
-    marginTop: 10,
-    color: 'green',
-    fontWeight: 'bold',
-  },
-});
-
-export default FormPost;
+export default CreatePost;
