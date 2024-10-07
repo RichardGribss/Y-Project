@@ -5,7 +5,7 @@ Y Project é um app de rede social, contendo funcionalidades como:
   -Personalização de perfil como biografia e alteração de foto.
   
 Para rodar o App basta instalar as bibliotecas com:
-  "npm install"
+  "npm install expo@latest"
 
 Banco de dados Firebase:
   -Para trocar o banco de dados Firebase basta mudar a variavel App dentro do arquivo firebase/config.js
