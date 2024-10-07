@@ -1,4 +1,4 @@
-Y Project é um app de rede social, contendo funcionalidades como:
+Y Project é um app de rede social utilizando da tecnologia React-Navive, contendo funcionalidades como:
   -Cadastro/Login com Autenticação.
   -Criação de postagem de texto contendo foto ou não.
   -Funcionalidade do usuario logado seguir outros usuarios, curtir e comentar em posts.
