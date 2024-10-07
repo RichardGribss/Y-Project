@@ -6,6 +6,7 @@ import HomeScreen from './HomeScreen';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import Perfil from './Perfil'; 
+import Ban from './Ban'
 import { useNavigation } from '@react-navigation/native';
 
 const Stack = createNativeStackNavigator();
@@ -15,7 +16,7 @@ const Conta = () => {
 
   return (
   <View style={{flex:1, backgroundColor:'#f2f2f2'}}>
-<TouchableOpacity onPress={() => navigation.goBack()}>
+<TouchableOpacity onPress={() => navigation.navigate('Home')}>
     <Image source={{uri: 'https://cdn-icons-png.flaticon.com/512/566/566095.png'}} style={{width:25,height:25, margin:5}} />
 </TouchableOpacity>
       <Stack.Navigator initialRouteName="Home">
@@ -23,6 +24,7 @@ const Conta = () => {
         <Stack.Screen name="Login" component={LoginScreen} options={{headerShown: false}}/>
         <Stack.Screen name="Register" component={RegisterScreen} options={{headerShown: false}}/>
         <Stack.Screen name="Perfil" component={Perfil} options={{headerShown: false}}/>
+        <Stack.Screen name="Ban" component={Ban} options={{headerShown: false}}/>
       </Stack.Navigator>
  </View>
   );

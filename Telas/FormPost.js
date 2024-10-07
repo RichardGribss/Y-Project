@@ -1,52 +1,98 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { setDoc, doc } from 'firebase/firestore'; // Usar setDoc e doc para criar um ID
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { setDoc, doc } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
-import { firestore, auth, storage } from '../firebase/config'; // Certifique-se de importar o storage
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Importar funções do Firebase Storage
-import { v4 as uuidv4 } from 'uuid'; // Gera um ID único
+import { firestore, auth, storage } from '../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 
-const CreatePost = ({ navigation }) => {
+const CreatePost = () => {
   const [texto, setTexto] = useState('');
   const [imageUri, setImageUri] = useState(null);
   const [uploading, setUploading] = useState(false);
-  
+  const [userLoggedIn, setUserLoggedIn] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
 
+  useEffect(() => {
+    if (isFocused) {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        if (user) {
+          setUserLoggedIn(true);
+        } else {
+          navigation.navigate('Person');
+        }
+        setLoadingAuth(false);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [isFocused, navigation]);
 
   const pickImage = async () => {
+    const options = ['Tirar Foto', 'Escolher da Galeria', 'Cancelar'];
+    Alert.alert('Selecione uma opção', '', [
+      {
+        text: options[0],
+        onPress: () => launchCamera(),
+      },
+      {
+        text: options[1],
+        onPress: () => launchGallery(),
+      },
+      { text: options[2], style: 'cancel' },
+    ]);
+  };
+
+  const launchGallery = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-  
+
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri); // Acessa a URI correta da imagem selecionada
+      setImageUri(result.assets[0].uri);
     } else {
       console.log("Imagem não selecionada ou operação cancelada.");
     }
   };
 
-  // Função para enviar a imagem para o Firebase Storage
-  const uploadImage = async () => {
-    if (!imageUri) return null; // Se não houver imagem, retornar nulo
+  const launchCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
 
-    const response = await fetch(imageUri); // Pegar a URI da imagem
-    const blob = await response.blob(); // Converter a imagem em blob
-
-    const storageRef = ref(storage, `images/${uuidv4()}`); // Gera um nome único para a imagem no Firebase Storage
-
-    // Enviar a imagem para o Firebase Storage
-    await uploadBytes(storageRef, blob);
-
-    // Após o upload, recuperar a URL pública da imagem
-    const downloadUrl = await getDownloadURL(storageRef);
-
-    return downloadUrl; // Retorna a URL da imagem
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setImageUri(result.assets[0].uri);
+    } else {
+      console.log("Foto não tirada ou operação cancelada.");
+    }
   };
 
-  // Função para criar o post
+  const uploadImage = async () => {
+    if (!imageUri) return null;
+
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    const storageRef = ref(storage, `images/${generateUniqueId()}`);
+
+    await uploadBytes(storageRef, blob);
+
+    const downloadUrl = await getDownloadURL(storageRef);
+
+    return downloadUrl;
+  };
+
+  const generateUniqueId = () => {
+    return `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  };
+
   const createPost = async () => {
     if (texto.trim() === '') {
       alert('Por favor, insira algum texto para o post.');
@@ -56,30 +102,26 @@ const CreatePost = ({ navigation }) => {
     try {
       setUploading(true);
 
-      // Gera um ID manualmente usando uuid
-      const postId = uuidv4();
+      const postId = generateUniqueId();
+      const imageUrl = await uploadImage();
 
-      // Upload da imagem para o Firebase Storage e pegar o URL
-      const imageUrl = await uploadImage(); 
-
-      // Cria um novo post
       const newPost = {
-        id: postId, // Adiciona o ID gerado manualmente
+        id: postId,
         texto: texto,
-        img: imageUrl , // Salva a URL da imagem se tiver
-        autor: auth.currentUser.uid, // Captura o ID do autor autenticado
-        data: new Date(), // Data atual
+        img: imageUrl,
+        autor: auth.currentUser.uid,
+        data: new Date(),
       };
 
-      // Salva o post no Firestore usando setDoc com um ID manual
       await setDoc(doc(firestore, 'posts', postId), newPost);
 
-      alert('Post criado com sucesso!');
       setTexto('');
       setImageUri(null);
 
-      // Redireciona para o feed ou outra página
-      navigation.goBack();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     } catch (error) {
       console.error('Erro ao criar post: ', error);
       alert('Erro ao criar post.');
@@ -88,11 +130,22 @@ const CreatePost = ({ navigation }) => {
     }
   };
 
+  if (loadingAuth) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#3b5998" />
+      </View>
+    );
+  }
+
+  if (!userLoggedIn) {
+    return null;
+  }
+
   return (
     <View style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
       <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Criar Novo Post</Text>
 
-      {/* Campo de texto para o post */}
       <TextInput
         value={texto}
         onChangeText={(text) => setTexto(text)}
@@ -107,33 +160,28 @@ const CreatePost = ({ navigation }) => {
           marginBottom: 15,
         }}
         multiline={true}
+        keyboardType="default"
       />
 
-     
       <TouchableOpacity onPress={pickImage} style={{ marginBottom: 15 }}>
         <Text style={{ color: '#3b5998' }}>Escolher Imagem</Text>
       </TouchableOpacity>
 
-    
-      
       {imageUri && (
-  <Image
-    source={{ uri: imageUri }}
-    style={{
-      width: 100, // Miniatura
-      height: 100, // Miniatura
-      borderRadius: 10,
-      marginBottom: 15,
-      alignSelf: 'center',
-    }}
-  />
-)}
- 
+        <Image
+          source={{ uri: imageUri }}
+          style={{
+            width: 100,
+            height: 100,
+            borderRadius: 10,
+            marginBottom: 15,
+            alignSelf: 'center',
+          }}
+        />
+      )}
 
-   
       {uploading && <ActivityIndicator size="large" color="#3b5998" />}
 
-      {/* Botão para criar post */}
       <TouchableOpacity
         onPress={createPost}
         style={{

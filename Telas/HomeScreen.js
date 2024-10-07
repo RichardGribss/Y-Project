@@ -10,30 +10,29 @@ const HomeScreen = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => { // Use onAuthStateChanged do auth
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
+      
+      // Navegação condicional dentro de useEffect
+      if (!user) {
+        navigation.navigate('Login');
+      } else if(user) {
+        navigation.navigate('Perfil');
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigation]); // Adicione 'navigation' como dependência
 
   if (loading) {
     return <Text>Loading...</Text>;
   }
 
-  if (!user) {
-    navigation.navigate('Login'); // Redireciona para a tela de login
-    return null; // Previne renderização da tela se o usuário não estiver logado
-  }else if(user){
-    navigation.navigate('Perfil'); 
-    return null;
-  }
-
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Bem-vindo, {user.email}</Text>
-      <Button title="Sair" onPress={() => signOut(auth)} /> {/* Usando signOut do auth */}
+      <Text>Bem-vindo, {user?.email}</Text>
+      <Button title="Sair" onPress={() => signOut(auth)} />
       <TouchableOpacity onPress={() => navigation.navigate('Register')}>
         <Text style={{ color: 'blue', marginTop: 20 }}>Não tem uma conta? Cadastre-se</Text>
       </TouchableOpacity>

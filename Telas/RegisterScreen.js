@@ -1,7 +1,6 @@
-// RegisterScreen.js
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { auth } from '../firebase/config'; // Asegúrate de que el camino es correcto
+import { auth } from '../firebase/config'; // Asegúrate de que o caminho está correto
 import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { firestore } from '../firebase/config'; // Importa Firestore
 import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
@@ -14,12 +13,21 @@ const RegisterScreen = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState(''); // Novo estado para confirmar senha
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRegister = async () => {
     setErrorMessage('');
 
-    
+    if (nome === "Alexandre de Moraes") {
+     navigation.navigate('Ban')
+      return;
+    }
+    // Verifica se as senhas são iguais
+    if (password !== confirmPassword) {
+      setErrorMessage('As senhas não coincidem.');
+      return;
+    }
 
     try {
       // Verificar se o email já está registrado
@@ -30,36 +38,31 @@ const RegisterScreen = () => {
       }
 
       // Verificar se o username já está registrado
-      
       const q = query(collection(firestore, 'users'), where('username', '==', username));
-    
+
       // Executa a consulta
       const querySnapshot = await getDocs(q);
 
-      if(querySnapshot.empty){
+      if (querySnapshot.empty) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+        const user = userCredential.user;
 
-      // Enviar informações ao Firestore incluindo o uid
-      await setDoc(doc(firestore, 'users', user.uid), {
-        uid: user.uid,  // Guardar o ID do usuário
-        nome,
-        username,
-        email,
-      });
+        // Enviar informações ao Firestore, incluindo o uid
+        await setDoc(doc(firestore, 'users', user.uid), {
+          uid: user.uid,  // Guardar o ID do usuário
+          nome,
+          username,
+          email,
+        });
 
-      navigation.navigate('Perfil');
-      }else{
-        setErrorMessage('Este Nome de Usuario já esta em uso');
+        navigation.navigate('Perfil');
+      } else {
+        setErrorMessage('Este nome de usuário já está em uso.');
       }
-      
-      
-    } catch (error) {
-      setErrorMessage('Este E-mail já esta em uso');
-    }
 
-   
-    
+    } catch (error) {
+      setErrorMessage('Erro ao criar conta. Tente novamente.');
+    }
   };
 
   const checkEmailExists = async (email) => {
@@ -72,17 +75,6 @@ const RegisterScreen = () => {
     }
   };
 
-  const checkUsernameExists = async (username) => {
-    try {
-      const q = query(collection(firestore, 'users'), where('username', '==', username));
-      const querySnapshot = await getDocs(q);
-      return !querySnapshot.empty; // Retorna true se encontrar algum usuário com esse username
-    } catch (error) {
-      setErrorMessage('Erro ao verificar o nome de usuário.');
-      return false;
-    }
-  };
-
   function handleLogin() {
     navigation.navigate('Login');
   }
@@ -91,6 +83,7 @@ const RegisterScreen = () => {
     <View style={styles.container}>
       <Text style={{ fontSize: 55, marginBottom: 40 }}>𝕐</Text>
       <Text style={{ fontSize: 20, marginBottom: 20 }}>Cadastre-se</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Nome"
@@ -106,10 +99,11 @@ const RegisterScreen = () => {
           }
         }}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Nome de Usuário"
-        value={username}
+        value={username.toLowerCase()}
         onChangeText={setUsername}
         keyboardType="default"
         autoCapitalize="none"
@@ -121,6 +115,7 @@ const RegisterScreen = () => {
           }
         }}
       />
+
       <TextInput
         style={styles.input}
         placeholder="E-mail"
@@ -136,6 +131,7 @@ const RegisterScreen = () => {
           }
         }}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Senha"
@@ -150,6 +146,22 @@ const RegisterScreen = () => {
           }
         }}
       />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Confirmar Senha"  // Campo de confirmação de senha
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+        placeholderTextColor={isActive ? '#aaa' : '#ccc'}
+        onFocus={() => setIsActive(true)}
+        onBlur={() => {
+          if (confirmPassword === '') {
+            setIsActive(false);
+          }
+        }}
+      />
+
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
@@ -179,6 +191,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 25,
     paddingLeft: 15,
+    paddingVertical:8,
     marginBottom: 20,
     fontSize: 16,
     backgroundColor: '#F5F8FA',
@@ -197,6 +210,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 10,
     textAlign: 'center',
+  },
+  registerPrompt: {
+    marginTop: 20,
+    fontSize: 16,
   },
 });
 

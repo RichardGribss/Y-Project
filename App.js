@@ -1,24 +1,21 @@
-import React, {useEffect} from 'react';
-import { View, StatusBar } from 'react-native';
+import React from 'react';
+import { View } from 'react-native';
 import Header from './Telas/componentes/Header';
-import Pesquisa from './Telas/Pesquisa';
-import Feed from './Telas/Feed';
+import PesquisaHub from './Telas/PesquisaHub';
+import FeedHub from './Telas/FeedHub';
 import FormPost from './Telas/FormPost';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Conta from './Telas/Conta';
 
-
 function App() {
   const Tab = createBottomTabNavigator();
 
-
-
   return (
-    <View style={{flex: 1, backgroundColor: '#FFF'}}>
+    <NavigationContainer>
+      <View style={{ flex: 1, backgroundColor: '#FFF' }}>
       <Header />
-      <NavigationContainer>
         <Tab.Navigator
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, color, size }) => {
@@ -34,24 +31,24 @@ function App() {
                 iconName = focused ? 'add-circle' : 'add-circle-outline';
               }
 
-              // Retorna o componente do ícone apropriado
               return <Ionicons name={iconName} size={size} color={color} />;
             },
+            headerShown: route.name !== 'Person', // Oculta o Header na tela 'Person'
           })}
           tabBarOptions={{
             activeTintColor: 'tomato',
             inactiveTintColor: 'gray',
           }}
         >
-          <Tab.Screen name="Home" component={Feed} options={{headerShown: false}} />
-          <Tab.Screen name="Search" component={Pesquisa} options={{headerShown: false}} />
-          <Tab.Screen name="Post" component={FormPost} options={{headerShown: false}} /> 
-          <Tab.Screen name="Person" component={Conta} options={{headerShown: false, tabBarStyle: { display: 'none' } }} />
-
-
+          <Tab.Screen name="Home" component={FeedHub} options={{ headerShown: false,  tabBarLabel: () => null, }} />
+          <Tab.Screen name="Search" component={PesquisaHub} options={{ headerShown: false,  tabBarLabel: () => null, }} />
+          <Tab.Screen name="Post" component={FormPost} options={{ headerShown: false,  tabBarLabel: () => null, }} />
+          <Tab.Screen name="Person" component={Conta} options={{ headerShown: false,  tabBarLabel: () => null, tabBarStyle: { display: 'none' } }} />
         </Tab.Navigator>
-      </NavigationContainer>
-    </View>
+     
+   
+      </View>
+    </NavigationContainer>
   );
 }
 
