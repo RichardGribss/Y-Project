@@ -12,8 +12,12 @@ const CreatePost = () => {
   const [uploading, setUploading] = useState(false);
   const [userLoggedIn, setUserLoggedIn] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [imageB, setImageB] = useState(null)
+  const [catImage, setCatImage] = useState(null)
   const navigation = useNavigation();
   const isFocused = useIsFocused();
+
+  const API_KEY = 'live_gVGVIL3uzB1f66AVJxVa0XMLajtrDUaWcNvnaBvgH5qK8pIzqzA6QaY3dlWgwKxT';
 
   useEffect(() => {
     if (isFocused) {
@@ -105,10 +109,14 @@ const CreatePost = () => {
       const postId = generateUniqueId();
       const imageUrl = await uploadImage();
 
+      if(imageUrl!==null){
+        setImageB(imageUrl)
+      }
+     
       const newPost = {
         id: postId,
         texto: texto,
-        img: imageUrl,
+        img: imageB,
         autor: auth.currentUser.uid,
         data: new Date(),
       };
@@ -141,6 +149,25 @@ const CreatePost = () => {
   if (!userLoggedIn) {
     return null;
   }
+  
+  const fetchCatImage = async () => {
+    
+    try {
+      const response = await fetch('https://api.thecatapi.com/v1/images/search', {
+        headers: {
+          'x-api-key': API_KEY,
+        },
+      });
+      
+      const data = await response.json(); // Converte a resposta em JSON
+      
+      // Obtém a URL da imagem do gato
+      const imagelink = data[0].url;
+      setImageB(imagelink);
+    } catch (error) {
+      console.error('Erro ao buscar imagem de gato:', error);
+    }
+  };
 
   return (
     <View style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
@@ -195,6 +222,16 @@ const CreatePost = () => {
         <Text style={{ color: '#fff', fontWeight: 'bold' }}>
           {uploading ? 'Criando Post...' : 'Criar Post'}
         </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={fetchCatImage} style={{
+          backgroundColor: '#db9811',
+          padding: 10,
+          borderRadius: 10,
+          alignItems: 'center',
+         marginHorizontal:'15%',
+         marginTop:10
+        }}>
+        <Text style={{color:'#FFF'}}>selecionar imagem aleatoria</Text>
       </TouchableOpacity>
     </View>
   );
