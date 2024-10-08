@@ -42,7 +42,10 @@ Y Project é um aplicativo de rede social desenvolvido com **React Native**, con
      ```bash
        npm run start
 
-Licença
+## Licença
 
 Esse modelo segue uma estrutura organizada, fornece instruções claras para instalação e execução do projeto, além de informações essenciais sobre a configuração e tecnologias utilizadas.
+
 Estara liberado para uso de terceiros desde que haja a referenciação autoral nos documentos.
+
+Distribuído sob a licença MIT. Veja [LICENSE](./LICENSE) para mais informações.
