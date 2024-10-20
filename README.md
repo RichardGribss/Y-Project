@@ -37,7 +37,8 @@ Y Project é um aplicativo de rede social desenvolvido com **React Native**, con
           messagingSenderId: "SEU_MESSAGING_SENDER_ID",
           appId: "SEU_APP_ID"
         };
-
+      ```
+      **O Firebase deve estar com as funcionalidades de Authentication, Firestore Database e Storage ativadas.**
 4. Agora é rodar o app
      ```bash
        npm run start
